@@ -77,7 +77,8 @@ POLL_INTERVAL: Final[float] = 0.2
 # ---------------------------------------------------------------------------
 
 # Mean pixel difference threshold for cv2.absdiff.
-# Initial estimate; refine during M3 live calibration.
+# Live captures show ~0.0 diff between static frames; 2.0 provides
+# comfortable margin above noise while catching any real change.
 STABILITY_THRESHOLD: Final[float] = 2.0
 
 # ---------------------------------------------------------------------------
@@ -111,12 +112,14 @@ FUZZY_MATCH_THRESHOLD: Final[float] = 0.85
 # ---------------------------------------------------------------------------
 
 # HSV range for the green "Cleared" text.
-# Initial estimates for typical game UI green; refine from live screenshots.
-CLEARED_HSV_LOWER: Final[np.ndarray] = np.array([35, 80, 100])
-CLEARED_HSV_UPPER: Final[np.ndarray] = np.array([85, 255, 255])
+# Measured from live screenshot: H 48-60, S 30-117, V 146-205.
+# Margins added for robustness across lighting/compression variance.
+CLEARED_HSV_LOWER: Final[np.ndarray] = np.array([45, 25, 130])
+CLEARED_HSV_UPPER: Final[np.ndarray] = np.array([65, 130, 220])
 
 # Minimum number of green pixels to classify a card as Cleared.
-# Initial estimate; refine from live screenshots.
+# Live measurement found ~580 green pixels in the Cleared text region;
+# 50 is a safe minimum to distinguish from noise.
 CLEARED_PIXEL_THRESHOLD: Final[int] = 50
 
 # ---------------------------------------------------------------------------

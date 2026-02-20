@@ -1,0 +1,17 @@
+# Service account credentials — never commit
+*service_account*.json
+credentials.json
+
+# Debug screenshots — local only
+debug/
+!debug/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.venv/
+venv/

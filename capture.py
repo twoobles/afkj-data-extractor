@@ -8,12 +8,15 @@ directly.
 import logging
 import platform
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
+import cv2
 import mss
 import numpy as np
 
 from config import (
+    DEBUG_DIR,
     GAME_PROCESS_NAME,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
@@ -100,6 +103,10 @@ def capture_window() -> np.ndarray:
 def save_debug_screenshot(context: str) -> Path:
     """Save a timestamped screenshot to the debug directory.
 
+    Captures the current game window and writes it as a PNG with a
+    UTC-timestamped filename. If the game window cannot be captured,
+    falls back to a full primary-monitor capture.
+
     Args:
         context: A short label included in the filename to identify what
             triggered the screenshot (e.g. ``"ocr_failure_activity"``).
@@ -107,4 +114,23 @@ def save_debug_screenshot(context: str) -> Path:
     Returns:
         The path to the saved PNG file.
     """
-    raise NotImplementedError
+    DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{context}.png"
+    filepath = DEBUG_DIR / filename
+
+    try:
+        frame = capture_window()
+    except RuntimeError:
+        logger.warning(
+            "Game window unavailable for debug screenshot; "
+            "falling back to primary monitor capture"
+        )
+        with mss.mss() as sct:
+            screenshot = sct.grab(sct.monitors[1])
+        frame = np.array(screenshot)[:, :, :3]
+
+    cv2.imwrite(str(filepath), frame)
+    logger.info("Debug screenshot saved: %s", filepath)
+    return filepath

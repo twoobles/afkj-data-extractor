@@ -274,7 +274,7 @@ card Y positions drawn as rectangles, logs collected names. Use to tune
 
 ## Development Milestones
 
-### M1 — Foundation <- CURRENT
+### M1 — Foundation
 - Module stubs with docstrings: `main.py`, `config.py`, `exceptions.py`,
   `capture.py`, `navigate.py`, `parse.py`, `export.py`
 - `requirements.txt` (pinned); `assets/templates/` and `debug/` with `.gitkeep`
@@ -296,7 +296,7 @@ card Y positions drawn as rectangles, logs collected names. Use to tune
 - Manual integration script for live calibration (see Testing above)
 - Unit tests with mocked `pyautogui` and `capture`
 
-### M4 — OCR & parsing
+### M4 — OCR & parsing <- CURRENT
 - `extract_text(region, confidence)` → raises `OCRConfidenceError` if below threshold
 - `parse_activity()`, `parse_at_stage()` (incl. Cleared detection), `parse_rank()`
 - Fuzzy name matching in `parse.py`

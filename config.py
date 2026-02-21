@@ -3,8 +3,8 @@
 This module is the single source of truth for all magic values — coordinates,
 regions, thresholds, timeouts, and IDs. Never hardcode these values elsewhere.
 
-Constants marked "# TODO(M2)" or similar require calibration from real game
-screenshots and will be populated in the corresponding milestone.
+Constants marked with TODO comments require calibration from real game
+screenshots and will be refined in the corresponding milestone.
 """
 
 from pathlib import Path
@@ -57,7 +57,8 @@ COLUMN_ORDER: Final[list[str]] = [
 # Game window
 # ---------------------------------------------------------------------------
 
-# Process name used to locate the AFK Journey window.  # TODO(M2): confirm
+# Process name used to locate the AFK Journey window.
+# Matches against tasklist (Windows) or pgrep (Linux).
 GAME_PROCESS_NAME: Final[str] = "AFK Journey"
 
 SCREEN_WIDTH: Final[int] = 1920
@@ -75,7 +76,9 @@ POLL_INTERVAL: Final[float] = 0.2
 # Frame stability (used after scrolling)
 # ---------------------------------------------------------------------------
 
-# Mean pixel difference threshold for cv2.absdiff.  # TODO(M2): calibrate
+# Mean pixel difference threshold for cv2.absdiff.
+# Live captures show ~0.0 diff between static frames; 2.0 provides
+# comfortable margin above noise while catching any real change.
 STABILITY_THRESHOLD: Final[float] = 2.0
 
 # ---------------------------------------------------------------------------
@@ -108,11 +111,15 @@ FUZZY_MATCH_THRESHOLD: Final[float] = 0.85
 # AFK Stage — Cleared detection (HSV colour check)
 # ---------------------------------------------------------------------------
 
-# HSV range for the green "Cleared" text.  # TODO(M2): measure from screenshots
-CLEARED_HSV_LOWER: Final[np.ndarray] = np.array([0, 0, 0])
-CLEARED_HSV_UPPER: Final[np.ndarray] = np.array([0, 0, 0])
+# HSV range for the green "Cleared" text.
+# Measured from 2974 pixels across 4 Cleared cards (unobstructed captures):
+#   H 32-60, S 15-117, V 153-230.  Margins added for robustness.
+CLEARED_HSV_LOWER: Final[np.ndarray] = np.array([28, 10, 140])
+CLEARED_HSV_UPPER: Final[np.ndarray] = np.array([65, 130, 240])
 
-# Minimum number of green pixels to classify a card as Cleared.  # TODO(M2)
+# Minimum number of green pixels to classify a card as Cleared.
+# Live measurement found ~740 green pixels per Cleared card;
+# 50 is a safe minimum to distinguish from noise.
 CLEARED_PIXEL_THRESHOLD: Final[int] = 50
 
 # ---------------------------------------------------------------------------

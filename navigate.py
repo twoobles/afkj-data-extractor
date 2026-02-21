@@ -26,16 +26,19 @@ from config import (
     CLICK_GUILD_ACTIVENESS,
     CLICK_GUILD_FILTER,
     CLICK_HONOR_DUEL,
+    CLICK_RANKING,
     CLICK_SUPREME_ARENA,
     FRAME_STABILITY_TIMEOUT,
     NAV_HOME_CHECK_TIMEOUT,
     NAV_HOME_MAX_CLICKS,
     POLL_INTERVAL,
     STABILITY_THRESHOLD,
+    TEMPLATE_AFK_STAGES_MENU,
     TEMPLATE_BATTLE_MODES,
     TEMPLATE_DIR,
     TEMPLATE_GUILD_ACTIVENESS,
     TEMPLATE_GUILD_MENU,
+    TEMPLATE_MODE_SCREEN,
     TEMPLATE_RANKING_SCREEN,
     TEMPLATE_WORLD_SCREEN,
 )
@@ -167,19 +170,23 @@ def _navigate_to_ranking(
     click_coords: tuple[int, int],
     mode_name: str,
 ) -> None:
-    """Navigate from World screen to a ranking screen and apply guild filter.
+    """Navigate from World screen to a Battle Modes ranking and apply guild filter.
 
-    Opens the Battle Modes menu, clicks the specified mode, waits for the
-    ranking screen, and applies the guild-members-only filter.
+    Opens the Battle Modes menu, selects the specified mode, clicks the
+    Ranking button on the mode's screen, waits for the ranking screen, and
+    applies the guild-members-only filter.
 
     Args:
-        click_coords: ``(x, y)`` coordinate for the specific mode button.
+        click_coords: ``(x, y)`` coordinate for the specific mode button
+            inside the Battle Modes menu.
         mode_name: Human-readable mode name for log messages.
     """
     logger.info("Navigating to %s ranking", mode_name)
     pyautogui.click(*CLICK_BATTLE_MODES)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_BATTLE_MODES))
     pyautogui.click(*click_coords)
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_MODE_SCREEN))
+    pyautogui.click(*CLICK_RANKING)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
     apply_guild_filter()
     logger.info("Arrived at %s ranking with guild filter applied", mode_name)
@@ -188,12 +195,20 @@ def _navigate_to_ranking(
 def navigate_to_afk_stages_ranking() -> None:
     """Navigate from the World screen to the AFK Stages ranking screen.
 
-    Applies the guild-members-only filter after arriving.
+    AFK Stages has a direct menu on the World screen (not via Battle Modes).
+    Clicks AFK Stages → waits for AFK Stages menu → clicks Ranking → waits
+    for ranking screen → applies guild filter.
 
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    _navigate_to_ranking(CLICK_AFK_STAGES, "AFK Stages")
+    logger.info("Navigating to AFK Stages ranking")
+    pyautogui.click(*CLICK_AFK_STAGES)
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_AFK_STAGES_MENU))
+    pyautogui.click(*CLICK_RANKING)
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
+    apply_guild_filter()
+    logger.info("Arrived at AFK Stages ranking with guild filter applied")
 
 
 def navigate_to_dream_realm_ranking() -> None:

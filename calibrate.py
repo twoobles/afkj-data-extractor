@@ -27,12 +27,11 @@ import cv2
 import numpy as np
 import pyautogui
 
-from capture import capture_window, save_debug_screenshot
+from capture import save_debug_screenshot
 from config import (
     DEBUG_DIR,
     SCROLL_REGION_CENTER,
     SCROLL_STEP,
-    STABILITY_THRESHOLD,
     TEMPLATE_CARD,
     TEMPLATE_CONFIDENCE,
     TEMPLATE_DIR,

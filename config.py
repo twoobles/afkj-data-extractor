@@ -112,13 +112,13 @@ FUZZY_MATCH_THRESHOLD: Final[float] = 0.85
 # ---------------------------------------------------------------------------
 
 # HSV range for the green "Cleared" text.
-# Measured from live screenshot: H 48-60, S 30-117, V 146-205.
-# Margins added for robustness across lighting/compression variance.
-CLEARED_HSV_LOWER: Final[np.ndarray] = np.array([45, 25, 130])
-CLEARED_HSV_UPPER: Final[np.ndarray] = np.array([65, 130, 220])
+# Measured from 2974 pixels across 4 Cleared cards (unobstructed captures):
+#   H 32-60, S 15-117, V 153-230.  Margins added for robustness.
+CLEARED_HSV_LOWER: Final[np.ndarray] = np.array([28, 10, 140])
+CLEARED_HSV_UPPER: Final[np.ndarray] = np.array([65, 130, 240])
 
 # Minimum number of green pixels to classify a card as Cleared.
-# Live measurement found ~580 green pixels in the Cleared text region;
+# Live measurement found ~740 green pixels per Cleared card;
 # 50 is a safe minimum to distinguish from noise.
 CLEARED_PIXEL_THRESHOLD: Final[int] = 50
 

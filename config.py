@@ -92,6 +92,16 @@ SCROLL_STEP: Final[int] = 300
 GUILD_MAX_MEMBERS: Final[int] = 30
 
 # ---------------------------------------------------------------------------
+# Navigation
+# ---------------------------------------------------------------------------
+
+# Maximum back-button clicks when returning to the World screen.
+NAV_HOME_MAX_CLICKS: Final[int] = 5
+
+# Timeout (seconds) for waiting for frame stability after scrolling.
+FRAME_STABILITY_TIMEOUT: Final[float] = 5.0
+
+# ---------------------------------------------------------------------------
 # OCR
 # ---------------------------------------------------------------------------
 
@@ -169,6 +179,8 @@ SCROLL_REGION_CENTER: Final[tuple[int, int]] = (960, 540)  # TODO(M3): refine
 
 TEMPLATE_WORLD_SCREEN: Final[str] = "world_screen.png"
 TEMPLATE_GUILD_MENU: Final[str] = "guild_menu.png"
+TEMPLATE_GUILD_ACTIVENESS: Final[str] = "guild_activeness.png"
+TEMPLATE_BATTLE_MODES: Final[str] = "battle_modes.png"
 TEMPLATE_RANKING_SCREEN: Final[str] = "ranking_screen.png"
 TEMPLATE_CARD: Final[str] = "card.png"
 

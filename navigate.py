@@ -28,6 +28,7 @@ from config import (
     CLICK_HONOR_DUEL,
     CLICK_SUPREME_ARENA,
     FRAME_STABILITY_TIMEOUT,
+    NAV_HOME_CHECK_TIMEOUT,
     NAV_HOME_MAX_CLICKS,
     POLL_INTERVAL,
     STABILITY_THRESHOLD,
@@ -120,20 +121,68 @@ def wait_for_stability(timeout: float = FRAME_STABILITY_TIMEOUT) -> np.ndarray:
 def navigate_home() -> None:
     """Navigate back to the World screen and verify arrival via template match.
 
+    Clicks the back button up to ``NAV_HOME_MAX_CLICKS`` times, checking for
+    the World screen template after each click. Raises ``TimeoutError`` if
+    the World screen is never reached.
+
     Raises:
         TimeoutError: If the World screen template is not found after
             navigation.
     """
-    raise NotImplementedError
+    template = str(TEMPLATE_DIR / TEMPLATE_WORLD_SCREEN)
+    for attempt in range(NAV_HOME_MAX_CLICKS):
+        try:
+            wait_for_screen(template, timeout=NAV_HOME_CHECK_TIMEOUT)
+            logger.info("Arrived at World screen")
+            return
+        except TimeoutError:
+            logger.debug(
+                "World screen not found (attempt %d/%d), clicking back",
+                attempt + 1, NAV_HOME_MAX_CLICKS,
+            )
+            pyautogui.click(*CLICK_BACK)
+    # Final attempt with full default timeout
+    wait_for_screen(template)
+    logger.info("Arrived at World screen")
 
 
 def navigate_to_guild_activeness() -> None:
     """Navigate from the World screen to the Guild Weekly Activeness view.
 
+    Clicks the Guild button, waits for the Guild menu, then clicks the
+    Weekly Activeness tab and waits for the activeness screen.
+
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    raise NotImplementedError
+    logger.info("Navigating to Guild Activeness")
+    pyautogui.click(*CLICK_GUILD)
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_GUILD_MENU))
+    pyautogui.click(*CLICK_GUILD_ACTIVENESS)
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_GUILD_ACTIVENESS))
+    logger.info("Arrived at Guild Activeness screen")
+
+
+def _navigate_to_ranking(
+    click_coords: tuple[int, int],
+    mode_name: str,
+) -> None:
+    """Navigate from World screen to a ranking screen and apply guild filter.
+
+    Opens the Battle Modes menu, clicks the specified mode, waits for the
+    ranking screen, and applies the guild-members-only filter.
+
+    Args:
+        click_coords: ``(x, y)`` coordinate for the specific mode button.
+        mode_name: Human-readable mode name for log messages.
+    """
+    logger.info("Navigating to %s ranking", mode_name)
+    pyautogui.click(*CLICK_BATTLE_MODES)
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_BATTLE_MODES))
+    pyautogui.click(*click_coords)
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
+    apply_guild_filter()
+    logger.info("Arrived at %s ranking with guild filter applied", mode_name)
 
 
 def navigate_to_afk_stages_ranking() -> None:
@@ -144,7 +193,7 @@ def navigate_to_afk_stages_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    raise NotImplementedError
+    _navigate_to_ranking(CLICK_AFK_STAGES, "AFK Stages")
 
 
 def navigate_to_dream_realm_ranking() -> None:
@@ -155,7 +204,7 @@ def navigate_to_dream_realm_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    raise NotImplementedError
+    _navigate_to_ranking(CLICK_DREAM_REALM, "Dream Realm")
 
 
 def navigate_to_supreme_arena_ranking() -> None:
@@ -166,7 +215,7 @@ def navigate_to_supreme_arena_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    raise NotImplementedError
+    _navigate_to_ranking(CLICK_SUPREME_ARENA, "Supreme Arena")
 
 
 def navigate_to_arcane_labyrinth_ranking() -> None:
@@ -177,7 +226,7 @@ def navigate_to_arcane_labyrinth_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    raise NotImplementedError
+    _navigate_to_ranking(CLICK_ARCANE_LABYRINTH, "Arcane Labyrinth")
 
 
 def navigate_to_honor_duel_ranking() -> None:
@@ -188,16 +237,23 @@ def navigate_to_honor_duel_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    raise NotImplementedError
+    _navigate_to_ranking(CLICK_HONOR_DUEL, "Honor Duel")
 
 
 def apply_guild_filter() -> None:
     """Toggle the guild-members-only filter on a ranking screen.
 
+    Clicks the guild filter button and re-verifies the ranking screen
+    template is still visible (confirming we didn't navigate away).
+
     Raises:
-        TimeoutError: If the filter confirmation template is not found.
+        TimeoutError: If the ranking screen template is not found after
+            clicking the filter.
     """
-    raise NotImplementedError
+    logger.debug("Applying guild-members-only filter")
+    pyautogui.click(*CLICK_GUILD_FILTER)
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
+    logger.debug("Guild filter applied")
 
 
 def scroll_and_collect(

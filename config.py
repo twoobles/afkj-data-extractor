@@ -98,6 +98,11 @@ GUILD_MAX_MEMBERS: Final[int] = 30
 # Maximum back-button clicks when returning to the World screen.
 NAV_HOME_MAX_CLICKS: Final[int] = 5
 
+# Short timeout (seconds) per back-click attempt in navigate_home().
+# Kept low so repeated clicks happen quickly; the final attempt uses
+# the full WAIT_TIMEOUT.
+NAV_HOME_CHECK_TIMEOUT: Final[float] = 2.0
+
 # Timeout (seconds) for waiting for frame stability after scrolling.
 FRAME_STABILITY_TIMEOUT: Final[float] = 5.0
 

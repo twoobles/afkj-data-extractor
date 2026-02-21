@@ -158,13 +158,21 @@ CLICK_GUILD: Final[tuple[int, int]] = (0, 0)
 # Guild menu → Weekly Activeness tab
 CLICK_GUILD_ACTIVENESS: Final[tuple[int, int]] = (0, 0)
 
-# World screen → Battle Modes / Ranking menus
-CLICK_BATTLE_MODES: Final[tuple[int, int]] = (0, 0)
+# World screen → AFK Stages (direct menu, not via Battle Modes)
 CLICK_AFK_STAGES: Final[tuple[int, int]] = (0, 0)
+
+# World screen → Battle Modes menu
+CLICK_BATTLE_MODES: Final[tuple[int, int]] = (0, 0)
+
+# Inside Battle Modes menu → specific mode
 CLICK_DREAM_REALM: Final[tuple[int, int]] = (0, 0)
 CLICK_SUPREME_ARENA: Final[tuple[int, int]] = (0, 0)
 CLICK_ARCANE_LABYRINTH: Final[tuple[int, int]] = (0, 0)
 CLICK_HONOR_DUEL: Final[tuple[int, int]] = (0, 0)
+
+# Ranking button inside a mode's screen (shared across AFK Stages and
+# Battle Modes mode pages)
+CLICK_RANKING: Final[tuple[int, int]] = (0, 0)
 
 # Guild-members-only filter toggle
 CLICK_GUILD_FILTER: Final[tuple[int, int]] = (0, 0)
@@ -185,7 +193,9 @@ SCROLL_REGION_CENTER: Final[tuple[int, int]] = (960, 540)  # TODO(M3): refine
 TEMPLATE_WORLD_SCREEN: Final[str] = "world_screen.png"
 TEMPLATE_GUILD_MENU: Final[str] = "guild_menu.png"
 TEMPLATE_GUILD_ACTIVENESS: Final[str] = "guild_activeness.png"
+TEMPLATE_AFK_STAGES_MENU: Final[str] = "afk_stages_menu.png"
 TEMPLATE_BATTLE_MODES: Final[str] = "battle_modes.png"
+TEMPLATE_MODE_SCREEN: Final[str] = "mode_screen.png"
 TEMPLATE_RANKING_SCREEN: Final[str] = "ranking_screen.png"
 TEMPLATE_CARD: Final[str] = "card.png"
 

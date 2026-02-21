@@ -9,6 +9,35 @@ screen capture to ``capture.py``.
 """
 
 import logging
+import time
+
+import cv2
+import numpy as np
+import pyautogui
+
+from capture import capture_window
+from config import (
+    CLICK_AFK_STAGES,
+    CLICK_ARCANE_LABYRINTH,
+    CLICK_BACK,
+    CLICK_BATTLE_MODES,
+    CLICK_DREAM_REALM,
+    CLICK_GUILD,
+    CLICK_GUILD_ACTIVENESS,
+    CLICK_GUILD_FILTER,
+    CLICK_HONOR_DUEL,
+    CLICK_SUPREME_ARENA,
+    FRAME_STABILITY_TIMEOUT,
+    NAV_HOME_MAX_CLICKS,
+    POLL_INTERVAL,
+    STABILITY_THRESHOLD,
+    TEMPLATE_BATTLE_MODES,
+    TEMPLATE_DIR,
+    TEMPLATE_GUILD_ACTIVENESS,
+    TEMPLATE_GUILD_MENU,
+    TEMPLATE_RANKING_SCREEN,
+    TEMPLATE_WORLD_SCREEN,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +59,62 @@ def wait_for_screen(
         confidence: Minimum ``TM_CCOEFF_NORMED`` score to accept.
 
     Raises:
+        FileNotFoundError: If the template image cannot be loaded.
         TimeoutError: If the template is not found within *timeout* seconds.
             This is fatal and triggers an abort with a debug screenshot.
     """
-    raise NotImplementedError
+    start = time.time()
+    template = cv2.imread(template_path)
+    if template is None:
+        raise FileNotFoundError(
+            f"Template image not found or unreadable: {template_path}"
+        )
+    while time.time() - start < timeout:
+        screenshot = capture_window()
+        result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+        if result.max() >= confidence:
+            logger.debug(
+                "Template '%s' matched (score=%.3f)", template_path, result.max()
+            )
+            return
+        time.sleep(POLL_INTERVAL)
+    raise TimeoutError(f"Template '{template_path}' not found within {timeout}s")
+
+
+def wait_for_stability(timeout: float = FRAME_STABILITY_TIMEOUT) -> np.ndarray:
+    """Wait until two consecutive captured frames are nearly identical.
+
+    Compares successive ``capture_window()`` frames via ``cv2.absdiff``.
+    Returns the stable frame once the mean pixel difference drops below
+    ``STABILITY_THRESHOLD``.
+
+    Args:
+        timeout: Maximum seconds to wait before raising.
+
+    Returns:
+        The stable BGR frame as a numpy array.
+
+    Raises:
+        TimeoutError: If frame stability is not reached within *timeout*.
+    """
+    start = time.time()
+    prev = capture_window()
+    while time.time() - start < timeout:
+        time.sleep(POLL_INTERVAL)
+        curr = capture_window()
+        diff = cv2.absdiff(prev, curr).mean()
+        if diff < STABILITY_THRESHOLD:
+            logger.debug(
+                "Frame stable (diff=%.3f, threshold=%.1f)",
+                diff, STABILITY_THRESHOLD,
+            )
+            return curr
+        logger.debug("Frame unstable (diff=%.3f), waiting...", diff)
+        prev = curr
+    raise TimeoutError(
+        f"Frame stability not reached within {timeout}s "
+        f"(threshold={STABILITY_THRESHOLD})"
+    )
 
 
 def navigate_home() -> None:

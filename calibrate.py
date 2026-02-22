@@ -101,6 +101,97 @@ def _track_mouse() -> None:
     print()
 
 
+MEASUREMENT_STEPS: list[tuple[str, str, str]] = [
+    # (config_constant, description, navigation_instruction)
+    # --- World screen ---
+    ("CLICK_GUILD", "Guild button", "Navigate to the World screen."),
+    ("CLICK_AFK_STAGES", "AFK Stages button", ""),
+    ("CLICK_BATTLE_MODES", "Battle Modes button", ""),
+    ("CLICK_BACK", "Back / close button (X)", ""),
+    # --- Guild menu ---
+    ("CLICK_GUILD_ACTIVENESS", "Weekly Activeness tab",
+     "Open the Guild menu."),
+    # --- Battle Modes menu ---
+    ("CLICK_DREAM_REALM", "Dream Realm button",
+     "Go back to World screen, then open Battle Modes."),
+    ("CLICK_SUPREME_ARENA", "Supreme Arena button", ""),
+    ("CLICK_ARCANE_LABYRINTH", "Arcane Labyrinth button", ""),
+    ("CLICK_HONOR_DUEL", "Honor Duel button", ""),
+    # --- Inside any mode ---
+    ("CLICK_RANKING", "Ranking button",
+     "Enter any mode (e.g. Dream Realm) so you can see its main screen."),
+    # --- Ranking screen ---
+    ("CLICK_GUILD_FILTER", "Guild-members-only filter toggle",
+     "Open a ranking screen."),
+    # --- Scroll region ---
+    ("SCROLL_REGION_CENTER", "Center of the scrollable list area",
+     "Stay on the ranking screen."),
+]
+
+
+def _run_measure() -> None:
+    """Walk through each config constant, prompting the user to hover and confirm."""
+    print()
+    print("=" * 58)
+    print("  Guided Coordinate Measurement")
+    print("=" * 58)
+    print()
+    print("  For each step: navigate the game, hover your mouse over")
+    print("  the target, then come back here and press Enter.")
+    print("  Type 'skip' to skip a step, 'quit' to stop early.")
+    print()
+
+    results: list[tuple[str, tuple[int, int]]] = []
+
+    for const_name, description, nav_hint in MEASUREMENT_STEPS:
+        if nav_hint:
+            print(f"  >>> {nav_hint}")
+            print()
+
+        print(f"  Hover over: {description}  ({const_name})")
+
+        try:
+            response = input("  Press Enter when ready (or 'skip'/'quit'): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+
+        if response.lower() in ("quit", "q"):
+            break
+        if response.lower() == "skip":
+            print(f"  Skipped {const_name}")
+            print()
+            continue
+
+        x, y = pyautogui.position()
+        results.append((const_name, (x, y)))
+        print(f"  {const_name} = ({x}, {y})")
+        print()
+
+    if not results:
+        print("  No measurements taken.")
+        return
+
+    # Print summary
+    print()
+    print("=" * 58)
+    print("  Measurement Results")
+    print("=" * 58)
+    print()
+    for name, coords in results:
+        print(f"  {name} = {coords}")
+
+    # Save to file
+    DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    outfile = DEBUG_DIR / f"measurements_{timestamp}.txt"
+    with open(outfile, "w") as f:
+        for name, coords in results:
+            f.write(f"{name} = {coords}\n")
+    print(f"\n  Saved to: {outfile}")
+    print()
+
+
 def cmd_capture(_args: argparse.Namespace) -> None:
     """Interactive screenshot capture and mouse position tracking.
 
@@ -127,6 +218,7 @@ def cmd_capture(_args: argparse.Namespace) -> None:
     print("  <label>   Capture screenshot (3s delay to Alt+Tab to game)")
     print("  Enter     Print current mouse (x, y) position")
     print("  track     Continuously print mouse position (Enter to stop)")
+    print("  measure   Guided walkthrough of all click coordinates")
     print("  list      Show screenshots saved this session")
     print("  quit      Exit")
     print()
@@ -150,6 +242,10 @@ def cmd_capture(_args: argparse.Namespace) -> None:
 
         if cmd == "track":
             _track_mouse()
+            continue
+
+        if cmd == "measure":
+            _run_measure()
             continue
 
         if cmd == "list":

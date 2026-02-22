@@ -165,12 +165,27 @@ CLICK_SUPREME_ARENA: Final[tuple[int, int]] = (0, 0)
 CLICK_ARCANE_LABYRINTH: Final[tuple[int, int]] = (0, 0)
 CLICK_HONOR_DUEL: Final[tuple[int, int]] = (0, 0)
 
-# Inside a mode screen → Ranking
-CLICK_RANKING: Final[tuple[int, int]] = (0, 0)
+# Per-mode: Ranking button, filter open, and filter select
+# (positions differ across modes)
+CLICK_RANKING_AFK_STAGES: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_1_AFK_STAGES: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_2_AFK_STAGES: Final[tuple[int, int]] = (0, 0)
 
-# Ranking screen → guild-members-only filter (two clicks to apply)
-CLICK_GUILD_FILTER_1: Final[tuple[int, int]] = (0, 0)
-CLICK_GUILD_FILTER_2: Final[tuple[int, int]] = (0, 0)
+CLICK_RANKING_DREAM_REALM: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_1_DREAM_REALM: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_2_DREAM_REALM: Final[tuple[int, int]] = (0, 0)
+
+CLICK_RANKING_SUPREME_ARENA: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_1_SUPREME_ARENA: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_2_SUPREME_ARENA: Final[tuple[int, int]] = (0, 0)
+
+CLICK_RANKING_ARCANE_LABYRINTH: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_1_ARCANE_LABYRINTH: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_2_ARCANE_LABYRINTH: Final[tuple[int, int]] = (0, 0)
+
+CLICK_RANKING_HONOR_DUEL: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_1_HONOR_DUEL: Final[tuple[int, int]] = (0, 0)
+CLICK_FILTER_2_HONOR_DUEL: Final[tuple[int, int]] = (0, 0)
 
 # Guild hall → Guild member list
 CLICK_GUILD_MENU: Final[tuple[int, int]] = (0, 0)

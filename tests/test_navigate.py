@@ -11,12 +11,24 @@ from config import (
     CLICK_BACK,
     CLICK_BATTLE_MODES,
     CLICK_DREAM_REALM,
+    CLICK_FILTER_1_AFK_STAGES,
+    CLICK_FILTER_1_ARCANE_LABYRINTH,
+    CLICK_FILTER_1_DREAM_REALM,
+    CLICK_FILTER_1_HONOR_DUEL,
+    CLICK_FILTER_1_SUPREME_ARENA,
+    CLICK_FILTER_2_AFK_STAGES,
+    CLICK_FILTER_2_ARCANE_LABYRINTH,
+    CLICK_FILTER_2_DREAM_REALM,
+    CLICK_FILTER_2_HONOR_DUEL,
+    CLICK_FILTER_2_SUPREME_ARENA,
     CLICK_GUILD,
-    CLICK_GUILD_FILTER_1,
-    CLICK_GUILD_FILTER_2,
     CLICK_GUILD_MENU,
     CLICK_HONOR_DUEL,
-    CLICK_RANKING,
+    CLICK_RANKING_AFK_STAGES,
+    CLICK_RANKING_ARCANE_LABYRINTH,
+    CLICK_RANKING_DREAM_REALM,
+    CLICK_RANKING_HONOR_DUEL,
+    CLICK_RANKING_SUPREME_ARENA,
     CLICK_SUPREME_ARENA,
     NAV_HOME_CHECK_TIMEOUT,
     NAV_HOME_MAX_CLICKS,
@@ -364,13 +376,23 @@ class TestNavigateToRanking:
     """Tests for all five ranking navigation functions (via Battle Modes)."""
 
     @pytest.mark.parametrize(
-        "navigate_func_name,click_coords",
+        "navigate_func_name,click_coords,ranking_click,filter_1,filter_2",
         [
-            ("navigate_to_afk_stages_ranking", CLICK_AFK_STAGES),
-            ("navigate_to_dream_realm_ranking", CLICK_DREAM_REALM),
-            ("navigate_to_supreme_arena_ranking", CLICK_SUPREME_ARENA),
-            ("navigate_to_arcane_labyrinth_ranking", CLICK_ARCANE_LABYRINTH),
-            ("navigate_to_honor_duel_ranking", CLICK_HONOR_DUEL),
+            ("navigate_to_afk_stages_ranking", CLICK_AFK_STAGES,
+             CLICK_RANKING_AFK_STAGES, CLICK_FILTER_1_AFK_STAGES,
+             CLICK_FILTER_2_AFK_STAGES),
+            ("navigate_to_dream_realm_ranking", CLICK_DREAM_REALM,
+             CLICK_RANKING_DREAM_REALM, CLICK_FILTER_1_DREAM_REALM,
+             CLICK_FILTER_2_DREAM_REALM),
+            ("navigate_to_supreme_arena_ranking", CLICK_SUPREME_ARENA,
+             CLICK_RANKING_SUPREME_ARENA, CLICK_FILTER_1_SUPREME_ARENA,
+             CLICK_FILTER_2_SUPREME_ARENA),
+            ("navigate_to_arcane_labyrinth_ranking", CLICK_ARCANE_LABYRINTH,
+             CLICK_RANKING_ARCANE_LABYRINTH, CLICK_FILTER_1_ARCANE_LABYRINTH,
+             CLICK_FILTER_2_ARCANE_LABYRINTH),
+            ("navigate_to_honor_duel_ranking", CLICK_HONOR_DUEL,
+             CLICK_RANKING_HONOR_DUEL, CLICK_FILTER_1_HONOR_DUEL,
+             CLICK_FILTER_2_HONOR_DUEL),
         ],
     )
     @patch("navigate.wait_for_stability")
@@ -378,7 +400,7 @@ class TestNavigateToRanking:
     @patch("navigate.wait_for_screen")
     def test_navigates_via_battle_modes_with_ranking_and_filter(
         self, mock_wait, mock_click, mock_stability,
-        navigate_func_name, click_coords
+        navigate_func_name, click_coords, ranking_click, filter_1, filter_2
     ):
         """Battle Modes → mode → Ranking → 2-click guild filter."""
         mock_stability.return_value = np.zeros(
@@ -392,9 +414,9 @@ class TestNavigateToRanking:
         expected_clicks = [
             call(*CLICK_BATTLE_MODES),
             call(*click_coords),
-            call(*CLICK_RANKING),
-            call(*CLICK_GUILD_FILTER_1),
-            call(*CLICK_GUILD_FILTER_2),
+            call(*ranking_click),
+            call(*filter_1),
+            call(*filter_2),
         ]
         assert mock_click.call_args_list == expected_clicks
 
@@ -436,11 +458,13 @@ class TestApplyGuildFilter:
         )
 
         from navigate import apply_guild_filter
-        apply_guild_filter()
+        filter_1 = (100, 200)
+        filter_2 = (300, 400)
+        apply_guild_filter(filter_1, filter_2)
 
         expected_clicks = [
-            call(*CLICK_GUILD_FILTER_1),
-            call(*CLICK_GUILD_FILTER_2),
+            call(*filter_1),
+            call(*filter_2),
         ]
         assert mock_click.call_args_list == expected_clicks
         mock_stability.assert_called_once()
@@ -462,4 +486,4 @@ class TestApplyGuildFilter:
 
         from navigate import apply_guild_filter
         with pytest.raises(TimeoutError):
-            apply_guild_filter()
+            apply_guild_filter((100, 200), (300, 400))

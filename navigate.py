@@ -22,12 +22,24 @@ from config import (
     CLICK_BACK,
     CLICK_BATTLE_MODES,
     CLICK_DREAM_REALM,
+    CLICK_FILTER_1_AFK_STAGES,
+    CLICK_FILTER_1_ARCANE_LABYRINTH,
+    CLICK_FILTER_1_DREAM_REALM,
+    CLICK_FILTER_1_HONOR_DUEL,
+    CLICK_FILTER_1_SUPREME_ARENA,
+    CLICK_FILTER_2_AFK_STAGES,
+    CLICK_FILTER_2_ARCANE_LABYRINTH,
+    CLICK_FILTER_2_DREAM_REALM,
+    CLICK_FILTER_2_HONOR_DUEL,
+    CLICK_FILTER_2_SUPREME_ARENA,
     CLICK_GUILD,
-    CLICK_GUILD_FILTER_1,
-    CLICK_GUILD_FILTER_2,
     CLICK_GUILD_MENU,
     CLICK_HONOR_DUEL,
-    CLICK_RANKING,
+    CLICK_RANKING_AFK_STAGES,
+    CLICK_RANKING_ARCANE_LABYRINTH,
+    CLICK_RANKING_DREAM_REALM,
+    CLICK_RANKING_HONOR_DUEL,
+    CLICK_RANKING_SUPREME_ARENA,
     CLICK_SUPREME_ARENA,
     FRAME_STABILITY_TIMEOUT,
     NAV_HOME_CHECK_TIMEOUT,
@@ -168,6 +180,9 @@ def navigate_to_guild_members() -> None:
 
 def _navigate_to_ranking(
     click_coords: tuple[int, int],
+    ranking_click_coords: tuple[int, int],
+    filter_1_coords: tuple[int, int],
+    filter_2_coords: tuple[int, int],
     mode_name: str,
 ) -> None:
     """Navigate from World screen to a ranking screen and apply guild filter.
@@ -179,6 +194,12 @@ def _navigate_to_ranking(
     Args:
         click_coords: ``(x, y)`` coordinate for the specific mode button
             inside the Battle Modes menu.
+        ranking_click_coords: ``(x, y)`` coordinate for the Ranking button
+            on this mode's screen (differs per mode).
+        filter_1_coords: ``(x, y)`` coordinate for the first filter click
+            (opens filter menu) on this mode's ranking screen.
+        filter_2_coords: ``(x, y)`` coordinate for the second filter click
+            (selects guild option) on this mode's ranking screen.
         mode_name: Human-readable mode name for log messages.
     """
     logger.info("Navigating to %s ranking", mode_name)
@@ -186,9 +207,9 @@ def _navigate_to_ranking(
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_BATTLE_MODES))
     pyautogui.click(*click_coords)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_MODE_SCREEN))
-    pyautogui.click(*CLICK_RANKING)
+    pyautogui.click(*ranking_click_coords)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
-    apply_guild_filter()
+    apply_guild_filter(filter_1_coords, filter_2_coords)
     logger.info("Arrived at %s ranking with guild filter applied", mode_name)
 
 
@@ -201,7 +222,10 @@ def navigate_to_afk_stages_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    _navigate_to_ranking(CLICK_AFK_STAGES, "AFK Stages")
+    _navigate_to_ranking(
+        CLICK_AFK_STAGES, CLICK_RANKING_AFK_STAGES,
+        CLICK_FILTER_1_AFK_STAGES, CLICK_FILTER_2_AFK_STAGES, "AFK Stages",
+    )
 
 
 def navigate_to_dream_realm_ranking() -> None:
@@ -212,7 +236,10 @@ def navigate_to_dream_realm_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    _navigate_to_ranking(CLICK_DREAM_REALM, "Dream Realm")
+    _navigate_to_ranking(
+        CLICK_DREAM_REALM, CLICK_RANKING_DREAM_REALM,
+        CLICK_FILTER_1_DREAM_REALM, CLICK_FILTER_2_DREAM_REALM, "Dream Realm",
+    )
 
 
 def navigate_to_supreme_arena_ranking() -> None:
@@ -223,7 +250,10 @@ def navigate_to_supreme_arena_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    _navigate_to_ranking(CLICK_SUPREME_ARENA, "Supreme Arena")
+    _navigate_to_ranking(
+        CLICK_SUPREME_ARENA, CLICK_RANKING_SUPREME_ARENA,
+        CLICK_FILTER_1_SUPREME_ARENA, CLICK_FILTER_2_SUPREME_ARENA, "Supreme Arena",
+    )
 
 
 def navigate_to_arcane_labyrinth_ranking() -> None:
@@ -234,7 +264,11 @@ def navigate_to_arcane_labyrinth_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    _navigate_to_ranking(CLICK_ARCANE_LABYRINTH, "Arcane Labyrinth")
+    _navigate_to_ranking(
+        CLICK_ARCANE_LABYRINTH, CLICK_RANKING_ARCANE_LABYRINTH,
+        CLICK_FILTER_1_ARCANE_LABYRINTH, CLICK_FILTER_2_ARCANE_LABYRINTH,
+        "Arcane Labyrinth",
+    )
 
 
 def navigate_to_honor_duel_ranking() -> None:
@@ -245,24 +279,34 @@ def navigate_to_honor_duel_ranking() -> None:
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    _navigate_to_ranking(CLICK_HONOR_DUEL, "Honor Duel")
+    _navigate_to_ranking(
+        CLICK_HONOR_DUEL, CLICK_RANKING_HONOR_DUEL,
+        CLICK_FILTER_1_HONOR_DUEL, CLICK_FILTER_2_HONOR_DUEL, "Honor Duel",
+    )
 
 
-def apply_guild_filter() -> None:
+def apply_guild_filter(
+    filter_1_coords: tuple[int, int],
+    filter_2_coords: tuple[int, int],
+) -> None:
     """Apply the guild-members-only filter on a ranking screen.
 
     Requires two clicks: the first opens the filter, the second selects
     the guild option. Waits for frame stability between clicks to ensure
     the UI has settled, then verifies the ranking screen is still visible.
 
+    Args:
+        filter_1_coords: ``(x, y)`` coordinate for opening the filter menu.
+        filter_2_coords: ``(x, y)`` coordinate for selecting the guild option.
+
     Raises:
         TimeoutError: If the ranking screen template is not found after
             applying the filter.
     """
     logger.debug("Applying guild-members-only filter")
-    pyautogui.click(*CLICK_GUILD_FILTER_1)
+    pyautogui.click(*filter_1_coords)
     wait_for_stability()
-    pyautogui.click(*CLICK_GUILD_FILTER_2)
+    pyautogui.click(*filter_2_coords)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
     logger.debug("Guild filter applied")
 

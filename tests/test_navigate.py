@@ -12,19 +12,19 @@ from config import (
     CLICK_BATTLE_MODES,
     CLICK_DREAM_REALM,
     CLICK_GUILD,
-    CLICK_GUILD_ACTIVENESS,
-    CLICK_GUILD_FILTER,
+    CLICK_GUILD_FILTER_1,
+    CLICK_GUILD_FILTER_2,
+    CLICK_GUILD_MENU,
     CLICK_HONOR_DUEL,
     CLICK_RANKING,
     CLICK_SUPREME_ARENA,
     NAV_HOME_CHECK_TIMEOUT,
     NAV_HOME_MAX_CLICKS,
     POLL_INTERVAL,
-    TEMPLATE_AFK_STAGES_MENU,
     TEMPLATE_BATTLE_MODES,
     TEMPLATE_DIR,
-    TEMPLATE_GUILD_ACTIVENESS,
-    TEMPLATE_GUILD_MENU,
+    TEMPLATE_GUILD_HALL,
+    TEMPLATE_GUILD_MEMBER_LIST,
     TEMPLATE_MODE_SCREEN,
     TEMPLATE_RANKING_SCREEN,
     TEMPLATE_WORLD_SCREEN,
@@ -320,96 +320,71 @@ class TestNavigateHome:
 
 
 # ---------------------------------------------------------------------------
-# TestNavigateToGuildActiveness
+# TestNavigateToGuildMembers
 # ---------------------------------------------------------------------------
 
-class TestNavigateToGuildActiveness:
-    """Tests for navigate_to_guild_activeness()."""
+class TestNavigateToGuildMembers:
+    """Tests for navigate_to_guild_members()."""
 
     @patch("navigate.pyautogui.click")
     @patch("navigate.wait_for_screen")
     def test_click_sequence_and_template_waits(self, mock_wait, mock_click):
-        """Should click Guild → wait guild menu → click Activeness → wait."""
-        from navigate import navigate_to_guild_activeness
-        navigate_to_guild_activeness()
+        """Should click Guild → wait guild hall → click menu → wait member list."""
+        from navigate import navigate_to_guild_members
+        navigate_to_guild_members()
 
         expected_clicks = [
             call(*CLICK_GUILD),
-            call(*CLICK_GUILD_ACTIVENESS),
+            call(*CLICK_GUILD_MENU),
         ]
         assert mock_click.call_args_list == expected_clicks
 
         expected_waits = [
-            call(str(TEMPLATE_DIR / TEMPLATE_GUILD_MENU)),
-            call(str(TEMPLATE_DIR / TEMPLATE_GUILD_ACTIVENESS)),
+            call(str(TEMPLATE_DIR / TEMPLATE_GUILD_HALL)),
+            call(str(TEMPLATE_DIR / TEMPLATE_GUILD_MEMBER_LIST)),
         ]
         assert mock_wait.call_args_list == expected_waits
 
     @patch("navigate.pyautogui.click")
     @patch("navigate.wait_for_screen")
-    def test_propagates_timeout_from_guild_menu(self, mock_wait, mock_click):
-        """Should propagate TimeoutError if Guild menu is not found."""
-        mock_wait.side_effect = TimeoutError("guild menu not found")
+    def test_propagates_timeout_from_guild_hall(self, mock_wait, mock_click):
+        """Should propagate TimeoutError if Guild hall is not found."""
+        mock_wait.side_effect = TimeoutError("guild hall not found")
 
-        from navigate import navigate_to_guild_activeness
+        from navigate import navigate_to_guild_members
         with pytest.raises(TimeoutError):
-            navigate_to_guild_activeness()
+            navigate_to_guild_members()
 
 
 # ---------------------------------------------------------------------------
-# TestNavigateToAfkStagesRanking
-# ---------------------------------------------------------------------------
-
-class TestNavigateToAfkStagesRanking:
-    """Tests for navigate_to_afk_stages_ranking() — direct from World."""
-
-    @patch("navigate.pyautogui.click")
-    @patch("navigate.wait_for_screen")
-    def test_navigates_directly_not_via_battle_modes(
-        self, mock_wait, mock_click
-    ):
-        """Should go World → AFK Stages menu → Ranking → filter."""
-        from navigate import navigate_to_afk_stages_ranking
-        navigate_to_afk_stages_ranking()
-
-        expected_clicks = [
-            call(*CLICK_AFK_STAGES),
-            call(*CLICK_RANKING),
-            call(*CLICK_GUILD_FILTER),
-        ]
-        assert mock_click.call_args_list == expected_clicks
-
-        expected_waits = [
-            call(str(TEMPLATE_DIR / TEMPLATE_AFK_STAGES_MENU)),
-            call(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN)),
-            call(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN)),  # filter re-verify
-        ]
-        assert mock_wait.call_args_list == expected_waits
-
-
-
-# ---------------------------------------------------------------------------
-# TestNavigateToRanking (parameterized for Battle Modes: DR, SA, AL, HD)
+# TestNavigateToRanking (parameterized for all 5 Battle Modes)
 # ---------------------------------------------------------------------------
 
 class TestNavigateToRanking:
-    """Tests for the four Battle Modes ranking navigation functions."""
+    """Tests for all five ranking navigation functions (via Battle Modes)."""
 
     @pytest.mark.parametrize(
         "navigate_func_name,click_coords",
         [
+            ("navigate_to_afk_stages_ranking", CLICK_AFK_STAGES),
             ("navigate_to_dream_realm_ranking", CLICK_DREAM_REALM),
             ("navigate_to_supreme_arena_ranking", CLICK_SUPREME_ARENA),
             ("navigate_to_arcane_labyrinth_ranking", CLICK_ARCANE_LABYRINTH),
             ("navigate_to_honor_duel_ranking", CLICK_HONOR_DUEL),
         ],
     )
+    @patch("navigate.wait_for_stability")
     @patch("navigate.pyautogui.click")
     @patch("navigate.wait_for_screen")
-    def test_navigates_via_battle_modes_with_ranking_click(
-        self, mock_wait, mock_click, navigate_func_name, click_coords
+    def test_navigates_via_battle_modes_with_ranking_and_filter(
+        self, mock_wait, mock_click, mock_stability,
+        navigate_func_name, click_coords
     ):
-        """Battle Modes → mode → mode screen → Ranking → filter."""
+        """Battle Modes → mode → Ranking → 2-click guild filter."""
+        mock_stability.return_value = np.zeros(
+            (1080, 1920, 3), dtype=np.uint8
+        )
+
         import navigate
         navigate_func = getattr(navigate, navigate_func_name)
         navigate_func()
@@ -418,7 +393,8 @@ class TestNavigateToRanking:
             call(*CLICK_BATTLE_MODES),
             call(*click_coords),
             call(*CLICK_RANKING),
-            call(*CLICK_GUILD_FILTER),
+            call(*CLICK_GUILD_FILTER_1),
+            call(*CLICK_GUILD_FILTER_2),
         ]
         assert mock_click.call_args_list == expected_clicks
 
@@ -426,7 +402,7 @@ class TestNavigateToRanking:
             call(str(TEMPLATE_DIR / TEMPLATE_BATTLE_MODES)),
             call(str(TEMPLATE_DIR / TEMPLATE_MODE_SCREEN)),
             call(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN)),
-            call(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN)),  # filter re-verify
+            call(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN)),  # after filter
         ]
         assert mock_wait.call_args_list == expected_waits
 
@@ -448,24 +424,40 @@ class TestNavigateToRanking:
 class TestApplyGuildFilter:
     """Tests for apply_guild_filter()."""
 
+    @patch("navigate.wait_for_stability")
     @patch("navigate.pyautogui.click")
     @patch("navigate.wait_for_screen")
-    def test_clicks_filter_and_verifies_ranking_screen(
-        self, mock_wait, mock_click
+    def test_two_clicks_with_stability_wait(
+        self, mock_wait, mock_click, mock_stability
     ):
-        """Should click the guild filter and re-verify the ranking screen."""
+        """Should click filter twice with stability wait between clicks."""
+        mock_stability.return_value = np.zeros(
+            (1080, 1920, 3), dtype=np.uint8
+        )
+
         from navigate import apply_guild_filter
         apply_guild_filter()
 
-        mock_click.assert_called_once_with(*CLICK_GUILD_FILTER)
+        expected_clicks = [
+            call(*CLICK_GUILD_FILTER_1),
+            call(*CLICK_GUILD_FILTER_2),
+        ]
+        assert mock_click.call_args_list == expected_clicks
+        mock_stability.assert_called_once()
         mock_wait.assert_called_once_with(
             str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN)
         )
 
+    @patch("navigate.wait_for_stability")
     @patch("navigate.pyautogui.click")
     @patch("navigate.wait_for_screen")
-    def test_propagates_timeout_after_filter(self, mock_wait, mock_click):
+    def test_propagates_timeout_after_filter(
+        self, mock_wait, mock_click, mock_stability
+    ):
         """Should propagate TimeoutError if ranking screen lost after filter."""
+        mock_stability.return_value = np.zeros(
+            (1080, 1920, 3), dtype=np.uint8
+        )
         mock_wait.side_effect = TimeoutError("ranking screen lost")
 
         from navigate import apply_guild_filter

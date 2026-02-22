@@ -53,7 +53,7 @@ from navigate import (
     navigate_to_afk_stages_ranking,
     navigate_to_arcane_labyrinth_ranking,
     navigate_to_dream_realm_ranking,
-    navigate_to_guild_activeness,
+    navigate_to_guild_members,
     navigate_to_honor_duel_ranking,
     navigate_to_supreme_arena_ranking,
     wait_for_screen,
@@ -63,7 +63,7 @@ from navigate import (
 logger = logging.getLogger(__name__)
 
 MODE_NAVIGATORS: dict[str, Callable[[], None]] = {
-    "activity": navigate_to_guild_activeness,
+    "activity": navigate_to_guild_members,
     "afk_stages": navigate_to_afk_stages_ranking,
     "dream_realm": navigate_to_dream_realm_ranking,
     "supreme_arena": navigate_to_supreme_arena_ranking,
@@ -105,15 +105,15 @@ MEASUREMENT_STEPS: list[tuple[str, str, str]] = [
     # (config_constant, description, navigation_instruction)
     # --- World screen ---
     ("CLICK_GUILD", "Guild button", "Navigate to the World screen."),
-    ("CLICK_AFK_STAGES", "AFK Stages button", ""),
     ("CLICK_BATTLE_MODES", "Battle Modes button", ""),
     ("CLICK_BACK", "Back / close button (X)", ""),
-    # --- Guild menu ---
-    ("CLICK_GUILD_ACTIVENESS", "Weekly Activeness tab",
-     "Open the Guild menu."),
+    # --- Guild hall ---
+    ("CLICK_GUILD_MENU", "Guild menu button (opens member list)",
+     "Click the Guild button to enter the Guild hall."),
     # --- Battle Modes menu ---
-    ("CLICK_DREAM_REALM", "Dream Realm button",
+    ("CLICK_AFK_STAGES", "AFK Stages button",
      "Go back to World screen, then open Battle Modes."),
+    ("CLICK_DREAM_REALM", "Dream Realm button", ""),
     ("CLICK_SUPREME_ARENA", "Supreme Arena button", ""),
     ("CLICK_ARCANE_LABYRINTH", "Arcane Labyrinth button", ""),
     ("CLICK_HONOR_DUEL", "Honor Duel button", ""),
@@ -121,11 +121,11 @@ MEASUREMENT_STEPS: list[tuple[str, str, str]] = [
     ("CLICK_RANKING", "Ranking button",
      "Enter any mode (e.g. Dream Realm) so you can see its main screen."),
     # --- Ranking screen ---
-    ("CLICK_GUILD_FILTER", "Guild-members-only filter toggle",
+    ("CLICK_GUILD_FILTER_1", "Guild filter — first click (opens filter)",
      "Open a ranking screen."),
+    ("CLICK_GUILD_FILTER_2", "Guild filter — second click (selects guild)", ""),
     # --- Scroll region ---
-    ("SCROLL_REGION_CENTER", "Center of the scrollable list area",
-     "Stay on the ranking screen."),
+    ("SCROLL_REGION_CENTER", "Center of the scrollable list area", ""),
 ]
 
 

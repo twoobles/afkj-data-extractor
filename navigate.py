@@ -23,8 +23,9 @@ from config import (
     CLICK_BATTLE_MODES,
     CLICK_DREAM_REALM,
     CLICK_GUILD,
-    CLICK_GUILD_ACTIVENESS,
-    CLICK_GUILD_FILTER,
+    CLICK_GUILD_FILTER_1,
+    CLICK_GUILD_FILTER_2,
+    CLICK_GUILD_MENU,
     CLICK_HONOR_DUEL,
     CLICK_RANKING,
     CLICK_SUPREME_ARENA,
@@ -33,11 +34,10 @@ from config import (
     NAV_HOME_MAX_CLICKS,
     POLL_INTERVAL,
     STABILITY_THRESHOLD,
-    TEMPLATE_AFK_STAGES_MENU,
     TEMPLATE_BATTLE_MODES,
     TEMPLATE_DIR,
-    TEMPLATE_GUILD_ACTIVENESS,
-    TEMPLATE_GUILD_MENU,
+    TEMPLATE_GUILD_HALL,
+    TEMPLATE_GUILD_MEMBER_LIST,
     TEMPLATE_MODE_SCREEN,
     TEMPLATE_RANKING_SCREEN,
     TEMPLATE_WORLD_SCREEN,
@@ -149,28 +149,28 @@ def navigate_home() -> None:
     logger.info("Arrived at World screen")
 
 
-def navigate_to_guild_activeness() -> None:
-    """Navigate from the World screen to the Guild Weekly Activeness view.
+def navigate_to_guild_members() -> None:
+    """Navigate from the World screen to the Guild member list.
 
-    Clicks the Guild button, waits for the Guild menu, then clicks the
-    Weekly Activeness tab and waits for the activeness screen.
+    Clicks the Guild button, waits for the Guild hall, then clicks the
+    Guild menu button and waits for the member list screen.
 
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    logger.info("Navigating to Guild Activeness")
+    logger.info("Navigating to Guild member list")
     pyautogui.click(*CLICK_GUILD)
-    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_GUILD_MENU))
-    pyautogui.click(*CLICK_GUILD_ACTIVENESS)
-    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_GUILD_ACTIVENESS))
-    logger.info("Arrived at Guild Activeness screen")
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_GUILD_HALL))
+    pyautogui.click(*CLICK_GUILD_MENU)
+    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_GUILD_MEMBER_LIST))
+    logger.info("Arrived at Guild member list")
 
 
 def _navigate_to_ranking(
     click_coords: tuple[int, int],
     mode_name: str,
 ) -> None:
-    """Navigate from World screen to a Battle Modes ranking and apply guild filter.
+    """Navigate from World screen to a ranking screen and apply guild filter.
 
     Opens the Battle Modes menu, selects the specified mode, clicks the
     Ranking button on the mode's screen, waits for the ranking screen, and
@@ -195,20 +195,13 @@ def _navigate_to_ranking(
 def navigate_to_afk_stages_ranking() -> None:
     """Navigate from the World screen to the AFK Stages ranking screen.
 
-    AFK Stages has a direct menu on the World screen (not via Battle Modes).
-    Clicks AFK Stages → waits for AFK Stages menu → clicks Ranking → waits
-    for ranking screen → applies guild filter.
+    Goes through Battle Modes menu like all other ranking modes.
+    Applies the guild-members-only filter after arriving.
 
     Raises:
         TimeoutError: If any intermediate screen template is not found.
     """
-    logger.info("Navigating to AFK Stages ranking")
-    pyautogui.click(*CLICK_AFK_STAGES)
-    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_AFK_STAGES_MENU))
-    pyautogui.click(*CLICK_RANKING)
-    wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
-    apply_guild_filter()
-    logger.info("Arrived at AFK Stages ranking with guild filter applied")
+    _navigate_to_ranking(CLICK_AFK_STAGES, "AFK Stages")
 
 
 def navigate_to_dream_realm_ranking() -> None:
@@ -256,17 +249,20 @@ def navigate_to_honor_duel_ranking() -> None:
 
 
 def apply_guild_filter() -> None:
-    """Toggle the guild-members-only filter on a ranking screen.
+    """Apply the guild-members-only filter on a ranking screen.
 
-    Clicks the guild filter button and re-verifies the ranking screen
-    template is still visible (confirming we didn't navigate away).
+    Requires two clicks: the first opens the filter, the second selects
+    the guild option. Waits for frame stability between clicks to ensure
+    the UI has settled, then verifies the ranking screen is still visible.
 
     Raises:
         TimeoutError: If the ranking screen template is not found after
-            clicking the filter.
+            applying the filter.
     """
     logger.debug("Applying guild-members-only filter")
-    pyautogui.click(*CLICK_GUILD_FILTER)
+    pyautogui.click(*CLICK_GUILD_FILTER_1)
+    wait_for_stability()
+    pyautogui.click(*CLICK_GUILD_FILTER_2)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
     logger.debug("Guild filter applied")
 

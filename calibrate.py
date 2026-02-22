@@ -29,6 +29,7 @@ import argparse
 import logging
 import sys
 import threading
+import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -123,7 +124,7 @@ def cmd_capture(_args: argparse.Namespace) -> None:
     print()
     print("Navigate the game manually, then use these commands:")
     print()
-    print("  <label>   Capture screenshot → calibrate_<label>.png")
+    print("  <label>   Capture screenshot (3s delay to Alt+Tab to game)")
     print("  Enter     Print current mouse (x, y) position")
     print("  track     Continuously print mouse position (Enter to stop)")
     print("  list      Show screenshots saved this session")
@@ -159,12 +160,16 @@ def cmd_capture(_args: argparse.Namespace) -> None:
                     print(f"  {p}")
             continue
 
-        # Anything else is a label → capture screenshot
+        # Anything else is a label → capture screenshot with delay
         label = cmd.replace(" ", "_")
+        for i in range(3, 0, -1):
+            print(f"\r  Capturing in {i}...  ", end="", flush=True)
+            time.sleep(1)
+        print("\r  Capturing...        ", end="", flush=True)
         try:
             frame = capture_window()
         except RuntimeError as exc:
-            print(f"  Capture failed: {exc}")
+            print(f"\r  Capture failed: {exc}")
             continue
 
         DEBUG_DIR.mkdir(parents=True, exist_ok=True)

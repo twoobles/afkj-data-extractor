@@ -1,24 +1,34 @@
 #!/usr/bin/env python3
-"""Manual integration script for live calibration of navigation and scrolling.
+"""Manual calibration tool for the AFK Journey guild scraper.
 
-Scrolls each mode against the live game, waits for frame stability, detects
-card Y positions via template matching, draws rectangles on detected positions,
-and dumps annotated frames to ``debug/``.  Use to tune ``config.py`` values
-(scroll step, card template, crop regions) before starting M4.
+Provides interactive commands for capturing screenshots, tracking mouse
+positions, cropping template images, and tuning scroll/card detection
+parameters against the live game.
 
-This is **not** a unit test — it requires the AFK Journey client to be running
-at 1920x1080 fullscreen on the World screen.
+Subcommands::
+
+    capture    Take labelled screenshots and track mouse position interactively.
+    template   Crop a region from a screenshot and save it as a template image.
+    scroll     Scroll through modes and dump annotated frames with card detection.
+
+The ``capture`` subcommand is the starting point — use it to capture reference
+screenshots for measuring click coordinates, crop regions, and template images.
+
+**Run this script on Windows** (not WSL) — the game runs on the Windows host
+and ``mss`` / ``pyautogui`` must access the native display.
 
 Usage::
 
-    python calibrate.py                              # all modes
-    python calibrate.py activity afk_stages          # specific modes
-    python calibrate.py --scroll-steps 5 dream_realm # limit scroll steps
+    python calibrate.py capture
+    python calibrate.py template debug/screenshot.png world_screen 100 200 300 50
+    python calibrate.py scroll
+    python calibrate.py scroll activity afk_stages --scroll-steps 5
 """
 
 import argparse
 import logging
 import sys
+import threading
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,7 +37,7 @@ import cv2
 import numpy as np
 import pyautogui
 
-from capture import save_debug_screenshot
+from capture import capture_window, find_game_window, save_debug_screenshot
 from config import (
     DEBUG_DIR,
     SCROLL_REGION_CENTER,
@@ -49,10 +59,6 @@ from navigate import (
     wait_for_stability,
 )
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 MODE_NAVIGATORS: dict[str, Callable[[], None]] = {
@@ -65,6 +71,160 @@ MODE_NAVIGATORS: dict[str, Callable[[], None]] = {
 }
 
 MAX_SCROLL_STEPS: int = 10
+
+
+# ---------------------------------------------------------------------------
+# Capture subcommand
+# ---------------------------------------------------------------------------
+
+
+def _track_mouse() -> None:
+    """Continuously print mouse position until Enter is pressed."""
+    print("  Tracking mouse position (press Enter to stop)...")
+    stop = threading.Event()
+
+    def printer() -> None:
+        while not stop.is_set():
+            x, y = pyautogui.position()
+            print(f"\r  Mouse: ({x:4d}, {y:4d})  ", end="", flush=True)
+            stop.wait(0.3)
+
+    t = threading.Thread(target=printer, daemon=True)
+    t.start()
+    try:
+        input()
+    except EOFError:
+        pass
+    stop.set()
+    t.join(timeout=1.0)
+    print()
+
+
+def cmd_capture(_args: argparse.Namespace) -> None:
+    """Interactive screenshot capture and mouse position tracking.
+
+    Verifies the game process is running, then enters an interactive loop
+    where the user can take labelled screenshots and check mouse coordinates.
+    Navigate the game manually between captures.
+    """
+    try:
+        find_game_window()
+    except RuntimeError as exc:
+        print(f"Error: {exc}")
+        print("Make sure AFK Journey is running fullscreen at 1920x1080.")
+        sys.exit(1)
+
+    saved: list[Path] = []
+
+    print()
+    print("=" * 58)
+    print("  AFK Journey Calibration — Capture Mode")
+    print("=" * 58)
+    print()
+    print("Navigate the game manually, then use these commands:")
+    print()
+    print("  <label>   Capture screenshot → calibrate_<label>.png")
+    print("  Enter     Print current mouse (x, y) position")
+    print("  track     Continuously print mouse position (Enter to stop)")
+    print("  list      Show screenshots saved this session")
+    print("  quit      Exit")
+    print()
+    print(f"Screenshots saved to: {DEBUG_DIR}/")
+    print()
+
+    while True:
+        try:
+            cmd = input("capture> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+
+        if not cmd:
+            x, y = pyautogui.position()
+            print(f"  Mouse: ({x}, {y})")
+            continue
+
+        if cmd in ("quit", "q", "exit"):
+            break
+
+        if cmd == "track":
+            _track_mouse()
+            continue
+
+        if cmd == "list":
+            if not saved:
+                print("  No screenshots saved this session.")
+            else:
+                for p in saved:
+                    print(f"  {p}")
+            continue
+
+        # Anything else is a label → capture screenshot
+        label = cmd.replace(" ", "_")
+        try:
+            frame = capture_window()
+        except RuntimeError as exc:
+            print(f"  Capture failed: {exc}")
+            continue
+
+        DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        filename = f"calibrate_{timestamp}_{label}.png"
+        filepath = DEBUG_DIR / filename
+        cv2.imwrite(str(filepath), frame)
+        saved.append(filepath)
+        print(f"  Saved: {filepath}")
+
+    print(f"\n{len(saved)} screenshot(s) saved to {DEBUG_DIR}/")
+
+
+# ---------------------------------------------------------------------------
+# Template subcommand
+# ---------------------------------------------------------------------------
+
+
+def cmd_template(args: argparse.Namespace) -> None:
+    """Crop a region from a screenshot and save it as a template image.
+
+    Reads the source image, crops the rectangle defined by (x, y, w, h),
+    and writes the result to ``assets/templates/<name>.png``.
+    """
+    source = Path(args.source)
+    if not source.exists():
+        print(f"Error: source image not found: {source}")
+        sys.exit(1)
+
+    img = cv2.imread(str(source))
+    if img is None:
+        print(f"Error: could not read image: {source}")
+        sys.exit(1)
+
+    x, y, w, h = args.x, args.y, args.w, args.h
+    img_h, img_w = img.shape[:2]
+
+    if x < 0 or y < 0 or w <= 0 or h <= 0:
+        print("Error: invalid crop region — x, y must be >= 0 and w, h must be > 0")
+        sys.exit(1)
+
+    if x + w > img_w or y + h > img_h:
+        print(
+            f"Error: crop region ({x}, {y}, {w}, {h}) exceeds image bounds "
+            f"({img_w}x{img_h})"
+        )
+        sys.exit(1)
+
+    cropped = img[y : y + h, x : x + w]
+
+    TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
+    name = args.name if args.name.endswith(".png") else f"{args.name}.png"
+    dest = TEMPLATE_DIR / name
+    cv2.imwrite(str(dest), cropped)
+    print(f"Template saved: {dest}  ({w}x{h} from ({x}, {y}))")
+
+
+# ---------------------------------------------------------------------------
+# Scroll subcommand
+# ---------------------------------------------------------------------------
 
 
 def detect_card_positions(frame: np.ndarray) -> list[int]:
@@ -211,42 +371,16 @@ def calibrate_mode(mode: str, max_steps: int = MAX_SCROLL_STEPS) -> None:
         # Scroll down
         pyautogui.moveTo(*SCROLL_REGION_CENTER)
         pyautogui.scroll(-SCROLL_STEP)
-        logger.debug("Scrolled down %d px at (%d, %d)", SCROLL_STEP, *SCROLL_REGION_CENTER)
+        logger.debug(
+            "Scrolled down %d px at (%d, %d)", SCROLL_STEP, *SCROLL_REGION_CENTER
+        )
 
     navigate_home()
     logger.info("Finished calibrating %s", mode)
 
 
-def main() -> None:
-    """Entry point — parse arguments and run calibration for selected modes."""
-    parser = argparse.ArgumentParser(
-        description="Manual calibration: scroll modes and dump annotated frames",
-    )
-    parser.add_argument(
-        "modes",
-        nargs="*",
-        default=list(MODE_NAVIGATORS.keys()),
-        help=(
-            "Modes to calibrate (default: all). "
-            f"Choices: {', '.join(MODE_NAVIGATORS.keys())}"
-        ),
-    )
-    parser.add_argument(
-        "--scroll-steps",
-        type=int,
-        default=MAX_SCROLL_STEPS,
-        help=f"Max scroll steps per mode (default: {MAX_SCROLL_STEPS})",
-    )
-    args = parser.parse_args()
-
-    # Validate mode names
-    for mode in args.modes:
-        if mode not in MODE_NAVIGATORS:
-            parser.error(
-                f"Unknown mode '{mode}'. "
-                f"Choose from: {', '.join(MODE_NAVIGATORS.keys())}"
-            )
-
+def cmd_scroll(args: argparse.Namespace) -> None:
+    """Navigate to each mode, scroll through rankings, and dump annotated frames."""
     # Verify world screen before any navigation
     world_template = str(TEMPLATE_DIR / TEMPLATE_WORLD_SCREEN)
     logger.info("Checking for World screen...")
@@ -271,6 +405,119 @@ def main() -> None:
             sys.exit(1)
 
     logger.info("All calibration complete.")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    """Entry point — parse subcommand and dispatch."""
+    parser = argparse.ArgumentParser(
+        description="Manual calibration tool for the AFK Journey guild scraper.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Typical workflow:\n"
+            "  1. python calibrate.py capture\n"
+            "     Navigate the game manually, take screenshots of each screen,\n"
+            "     and use 'track' / Enter to record click coordinates.\n"
+            "  2. python calibrate.py template debug/screenshot.png world_screen"
+            " X Y W H\n"
+            "     Crop template images from captured screenshots.\n"
+            "  3. Update config.py with measured coordinates and thresholds.\n"
+            "  4. python calibrate.py scroll\n"
+            "     Test navigation and card detection with the new values."
+        ),
+    )
+    subparsers = parser.add_subparsers(dest="command")
+
+    # capture ---
+    subparsers.add_parser(
+        "capture",
+        help="Interactive screenshot capture and mouse position tracking",
+        description=(
+            "Take labelled screenshots of the game and track mouse position. "
+            "Navigate the game manually between captures. Use this to gather "
+            "reference images for measuring click coordinates, crop regions, "
+            "and creating template images."
+        ),
+    )
+
+    # template ---
+    tmpl_parser = subparsers.add_parser(
+        "template",
+        help="Crop a region from a screenshot and save as a template image",
+        description=(
+            "Crop a rectangle from a source screenshot and save it to "
+            "assets/templates/<name>.png for use with template matching."
+        ),
+    )
+    tmpl_parser.add_argument(
+        "source",
+        help="Path to the source screenshot (e.g. debug/calibrate_..._world.png)",
+    )
+    tmpl_parser.add_argument(
+        "name",
+        help="Template name (e.g. 'world_screen' → assets/templates/world_screen.png)",
+    )
+    tmpl_parser.add_argument("x", type=int, help="Left edge of crop region")
+    tmpl_parser.add_argument("y", type=int, help="Top edge of crop region")
+    tmpl_parser.add_argument("w", type=int, help="Width of crop region")
+    tmpl_parser.add_argument("h", type=int, help="Height of crop region")
+
+    # scroll ---
+    scroll_parser = subparsers.add_parser(
+        "scroll",
+        help="Scroll through modes and dump annotated frames with card detection",
+        description=(
+            "Navigate to each mode, scroll through the ranking list, and "
+            "save annotated frames with detected card positions to debug/. "
+            "Requires template images and calibrated navigation coordinates."
+        ),
+    )
+    scroll_parser.add_argument(
+        "modes",
+        nargs="*",
+        default=list(MODE_NAVIGATORS.keys()),
+        help=(
+            "Modes to calibrate (default: all). "
+            f"Choices: {', '.join(MODE_NAVIGATORS.keys())}"
+        ),
+    )
+    scroll_parser.add_argument(
+        "--scroll-steps",
+        type=int,
+        default=MAX_SCROLL_STEPS,
+        help=f"Max scroll steps per mode (default: {MAX_SCROLL_STEPS})",
+    )
+
+    args = parser.parse_args()
+
+    if args.command == "capture":
+        # Minimal logging for interactive mode
+        logging.basicConfig(level=logging.WARNING)
+        cmd_capture(args)
+
+    elif args.command == "template":
+        logging.basicConfig(level=logging.WARNING)
+        cmd_template(args)
+
+    elif args.command == "scroll":
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        )
+        for mode in args.modes:
+            if mode not in MODE_NAVIGATORS:
+                scroll_parser.error(
+                    f"Unknown mode '{mode}'. "
+                    f"Choose from: {', '.join(MODE_NAVIGATORS.keys())}"
+                )
+        cmd_scroll(args)
+
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

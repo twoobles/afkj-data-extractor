@@ -49,6 +49,7 @@ from config import (
     TEMPLATE_WORLD_SCREEN,
 )
 from navigate import (
+    game_move_to,
     navigate_home,
     navigate_to_afk_stages_ranking,
     navigate_to_arcane_labyrinth_ranking,
@@ -80,14 +81,25 @@ MAX_SCROLL_STEPS: int = 10
 
 
 def _track_mouse() -> None:
-    """Continuously print mouse position until Enter is pressed."""
+    """Continuously print absolute and game-relative mouse position until Enter is pressed."""
+    try:
+        geom = find_game_window()
+        off_x, off_y = geom["left"], geom["top"]
+    except RuntimeError:
+        off_x, off_y = 0, 0
+        print("  (game window not found — showing absolute only)")
+
     print("  Tracking mouse position (press Enter to stop)...")
     stop = threading.Event()
 
     def printer() -> None:
         while not stop.is_set():
-            x, y = pyautogui.position()
-            print(f"\r  Mouse: ({x:4d}, {y:4d})  ", end="", flush=True)
+            ax, ay = pyautogui.position()
+            gx, gy = ax - off_x, ay - off_y
+            print(
+                f"\r  Abs: ({ax:4d}, {ay:4d})  Game: ({gx:4d}, {gy:4d})  ",
+                end="", flush=True,
+            )
             stop.wait(0.3)
 
     t = threading.Thread(target=printer, daemon=True)
@@ -154,15 +166,28 @@ MEASUREMENT_STEPS: list[tuple[str, str, str]] = [
 
 
 def _run_measure() -> None:
-    """Walk through each config constant, prompting the user to hover and confirm."""
+    """Walk through each config constant, prompting the user to hover and confirm.
+
+    Reads the game window position once at the start and subtracts the
+    offset from each reading so that stored coordinates are game-relative.
+    """
+    try:
+        geom = find_game_window()
+        off_x, off_y = geom["left"], geom["top"]
+    except RuntimeError:
+        print("  WARNING: game window not found — coordinates will be absolute")
+        off_x, off_y = 0, 0
+
     print()
     print("=" * 58)
-    print("  Guided Coordinate Measurement")
+    print("  Guided Coordinate Measurement (game-relative)")
     print("=" * 58)
     print()
     print("  For each step: navigate the game, hover your mouse over")
     print("  the target, then come back here and press Enter.")
     print("  Type 'skip' to skip a step, 'quit' to stop early.")
+    if off_x or off_y:
+        print(f"  Window offset: ({off_x}, {off_y})")
     print()
 
     results: list[tuple[str, tuple[int, int]]] = []
@@ -187,9 +212,10 @@ def _run_measure() -> None:
             print()
             continue
 
-        x, y = pyautogui.position()
-        results.append((const_name, (x, y)))
-        print(f"  {const_name} = ({x}, {y})")
+        ax, ay = pyautogui.position()
+        gx, gy = ax - off_x, ay - off_y
+        results.append((const_name, (gx, gy)))
+        print(f"  {const_name} = ({gx}, {gy})  (abs: {ax}, {ay})")
         print()
 
     if not results:
@@ -224,7 +250,8 @@ def cmd_capture(_args: argparse.Namespace) -> None:
     Navigate the game manually between captures.
     """
     try:
-        find_game_window()
+        geom = find_game_window()
+        off_x, off_y = geom["left"], geom["top"]
     except RuntimeError as exc:
         print(f"Error: {exc}")
         print("Make sure AFK Journey is running fullscreen at 1920x1080.")
@@ -257,8 +284,9 @@ def cmd_capture(_args: argparse.Namespace) -> None:
             break
 
         if not cmd:
-            x, y = pyautogui.position()
-            print(f"  Mouse: ({x}, {y})")
+            ax, ay = pyautogui.position()
+            gx, gy = ax - off_x, ay - off_y
+            print(f"  Abs: ({ax}, {ay})  Game: ({gx}, {gy})")
             continue
 
         if cmd in ("quit", "q", "exit"):
@@ -494,7 +522,7 @@ def calibrate_mode(mode: str, max_steps: int = MAX_SCROLL_STEPS) -> None:
         save_calibration_frame(annotated, mode, step)
 
         # Scroll down
-        pyautogui.moveTo(*SCROLL_REGION_CENTER)
+        game_move_to(*SCROLL_REGION_CENTER)
         pyautogui.scroll(-SCROLL_STEP)
         logger.debug(
             "Scrolled down %d px at (%d, %d)", SCROLL_STEP, *SCROLL_REGION_CENTER

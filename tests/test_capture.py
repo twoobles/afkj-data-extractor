@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from capture import capture_window, find_game_window, save_debug_screenshot
-from config import SCREEN_HEIGHT, SCREEN_WIDTH
+from config import GAME_HEIGHT, GAME_WIDTH
 
 
 # ---------------------------------------------------------------------------
@@ -14,19 +14,21 @@ from config import SCREEN_HEIGHT, SCREEN_WIDTH
 # ---------------------------------------------------------------------------
 
 def _fake_bgra_frame(
-    width: int = SCREEN_WIDTH,
-    height: int = SCREEN_HEIGHT,
+    width: int = GAME_WIDTH,
+    height: int = GAME_HEIGHT,
 ) -> np.ndarray:
     """Create a fake BGRA frame matching mss output format."""
     return np.zeros((height, width, 4), dtype=np.uint8)
 
 
-def _mock_subprocess_found() -> MagicMock:
-    """Return a mock subprocess result indicating the game process was found."""
-    mock = MagicMock()
-    mock.stdout = '"AFK Journey.exe","1234","Console","1","100,000 K"\n'
-    mock.returncode = 0
-    return mock
+def _mock_window_rect(left: int = 100, top: int = 50) -> dict[str, int]:
+    """Return a window geometry dict with a non-zero origin."""
+    return {
+        "left": left,
+        "top": top,
+        "width": GAME_WIDTH,
+        "height": GAME_HEIGHT,
+    }
 
 
 def _mock_subprocess_not_found() -> MagicMock:
@@ -38,40 +40,61 @@ def _mock_subprocess_not_found() -> MagicMock:
 
 
 # ---------------------------------------------------------------------------
-# find_game_window
+# find_game_window — Windows path
 # ---------------------------------------------------------------------------
 
-class TestFindGameWindow:
-    """Tests for find_game_window()."""
+class TestFindGameWindowWindows:
+    """Tests for find_game_window() on Windows (via _find_window_rect_windows)."""
 
-    @patch("capture.subprocess.run")
+    @patch("capture._find_window_rect_windows")
     @patch("capture.platform.system", return_value="Windows")
     def test_found_on_windows(
-        self, _mock_system: MagicMock, mock_run: MagicMock,
+        self, _mock_system: MagicMock, mock_rect: MagicMock,
     ) -> None:
-        """Returns geometry dict when game process is detected on Windows."""
-        mock_run.return_value = _mock_subprocess_found()
+        """Returns geometry dict when game window is detected on Windows."""
+        mock_rect.return_value = _mock_window_rect(left=200, top=100)
 
         result = find_game_window()
 
         assert result == {
-            "left": 0,
-            "top": 0,
-            "width": SCREEN_WIDTH,
-            "height": SCREEN_HEIGHT,
+            "left": 200,
+            "top": 100,
+            "width": GAME_WIDTH,
+            "height": GAME_HEIGHT,
         }
-        mock_run.assert_called_once()
+        mock_rect.assert_called_once()
 
-    @patch("capture.subprocess.run")
+    @patch("capture._find_window_rect_windows")
     @patch("capture.platform.system", return_value="Windows")
     def test_not_found_on_windows(
-        self, _mock_system: MagicMock, mock_run: MagicMock,
+        self, _mock_system: MagicMock, mock_rect: MagicMock,
     ) -> None:
-        """Raises RuntimeError when game process is not detected on Windows."""
-        mock_run.return_value = _mock_subprocess_not_found()
+        """Raises RuntimeError when game window is not detected on Windows."""
+        mock_rect.side_effect = RuntimeError("Game window not found")
 
         with pytest.raises(RuntimeError, match="Game window not found"):
             find_game_window()
+
+    @patch("capture._find_window_rect_windows")
+    @patch("capture.platform.system", return_value="Windows")
+    def test_geometry_values_match_config(
+        self, _mock_system: MagicMock, mock_rect: MagicMock,
+    ) -> None:
+        """Returned geometry uses GAME_WIDTH and GAME_HEIGHT from config."""
+        mock_rect.return_value = _mock_window_rect()
+
+        result = find_game_window()
+
+        assert result["width"] == 1920
+        assert result["height"] == 1080
+
+
+# ---------------------------------------------------------------------------
+# find_game_window — Linux path
+# ---------------------------------------------------------------------------
+
+class TestFindGameWindowLinux:
+    """Tests for find_game_window() on Linux (subprocess fallback)."""
 
     @patch("capture.subprocess.run")
     @patch("capture.platform.system", return_value="Linux")
@@ -86,8 +109,8 @@ class TestFindGameWindow:
         assert result == {
             "left": 0,
             "top": 0,
-            "width": SCREEN_WIDTH,
-            "height": SCREEN_HEIGHT,
+            "width": GAME_WIDTH,
+            "height": GAME_HEIGHT,
         }
 
     @patch("capture.subprocess.run")
@@ -100,19 +123,6 @@ class TestFindGameWindow:
 
         with pytest.raises(RuntimeError, match="Game window not found"):
             find_game_window()
-
-    @patch("capture.subprocess.run")
-    @patch("capture.platform.system", return_value="Windows")
-    def test_geometry_values_match_config(
-        self, _mock_system: MagicMock, mock_run: MagicMock,
-    ) -> None:
-        """Returned geometry uses SCREEN_WIDTH and SCREEN_HEIGHT from config."""
-        mock_run.return_value = _mock_subprocess_found()
-
-        result = find_game_window()
-
-        assert result["width"] == 1920
-        assert result["height"] == 1080
 
 
 # ---------------------------------------------------------------------------
@@ -128,10 +138,7 @@ class TestCaptureWindow:
         self, mock_find: MagicMock, mock_mss_cls: MagicMock,
     ) -> None:
         """Returns a BGR numpy array with expected shape."""
-        mock_find.return_value = {
-            "left": 0, "top": 0,
-            "width": SCREEN_WIDTH, "height": SCREEN_HEIGHT,
-        }
+        mock_find.return_value = _mock_window_rect()
         mock_sct = MagicMock()
         mock_sct.grab.return_value = _fake_bgra_frame()
         mock_mss_cls.return_value.__enter__ = MagicMock(return_value=mock_sct)
@@ -139,7 +146,7 @@ class TestCaptureWindow:
 
         frame = capture_window()
 
-        assert frame.shape == (SCREEN_HEIGHT, SCREEN_WIDTH, 3)
+        assert frame.shape == (GAME_HEIGHT, GAME_WIDTH, 3)
         assert frame.dtype == np.uint8
 
     @patch("capture.mss.mss")
@@ -148,10 +155,7 @@ class TestCaptureWindow:
         self, mock_find: MagicMock, mock_mss_cls: MagicMock,
     ) -> None:
         """Output has 3 channels (BGR), not 4 (BGRA)."""
-        mock_find.return_value = {
-            "left": 0, "top": 0,
-            "width": SCREEN_WIDTH, "height": SCREEN_HEIGHT,
-        }
+        mock_find.return_value = _mock_window_rect()
         # Set alpha channel to 255 so we can verify it's dropped
         bgra = _fake_bgra_frame()
         bgra[:, :, 3] = 255
@@ -180,10 +184,7 @@ class TestCaptureWindow:
         self, mock_find: MagicMock, mock_mss_cls: MagicMock,
     ) -> None:
         """Raises RuntimeError when captured frame has unexpected dimensions."""
-        mock_find.return_value = {
-            "left": 0, "top": 0,
-            "width": SCREEN_WIDTH, "height": SCREEN_HEIGHT,
-        }
+        mock_find.return_value = _mock_window_rect()
         # Return a frame with wrong dimensions
         wrong_frame = np.zeros((720, 1280, 4), dtype=np.uint8)
         mock_sct = MagicMock()
@@ -193,6 +194,23 @@ class TestCaptureWindow:
 
         with pytest.raises(RuntimeError, match="Unexpected capture dimensions"):
             capture_window()
+
+    @patch("capture.mss.mss")
+    @patch("capture.find_game_window")
+    def test_passes_geometry_to_mss_grab(
+        self, mock_find: MagicMock, mock_mss_cls: MagicMock,
+    ) -> None:
+        """Passes the full geometry dict (including offset) to mss.grab()."""
+        geom = _mock_window_rect(left=200, top=100)
+        mock_find.return_value = geom
+        mock_sct = MagicMock()
+        mock_sct.grab.return_value = _fake_bgra_frame()
+        mock_mss_cls.return_value.__enter__ = MagicMock(return_value=mock_sct)
+        mock_mss_cls.return_value.__exit__ = MagicMock(return_value=False)
+
+        capture_window()
+
+        mock_sct.grab.assert_called_once_with(geom)
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +227,7 @@ class TestSaveDebugScreenshot:
     ) -> None:
         """Saves a PNG to debug dir and returns the file path."""
         mock_capture.return_value = np.zeros(
-            (SCREEN_HEIGHT, SCREEN_WIDTH, 3), dtype=np.uint8,
+            (GAME_HEIGHT, GAME_WIDTH, 3), dtype=np.uint8,
         )
         mock_imwrite.return_value = True
 
@@ -228,7 +246,7 @@ class TestSaveDebugScreenshot:
     ) -> None:
         """Filename includes a UTC timestamp in YYYYMMDD_HHMMSS format."""
         mock_capture.return_value = np.zeros(
-            (SCREEN_HEIGHT, SCREEN_WIDTH, 3), dtype=np.uint8,
+            (GAME_HEIGHT, GAME_WIDTH, 3), dtype=np.uint8,
         )
         mock_imwrite.return_value = True
 
@@ -283,7 +301,7 @@ class TestSaveDebugScreenshot:
         """Creates the debug directory if it does not exist."""
         debug_subdir = tmp_path / "new_debug"
         mock_capture.return_value = np.zeros(
-            (SCREEN_HEIGHT, SCREEN_WIDTH, 3), dtype=np.uint8,
+            (GAME_HEIGHT, GAME_WIDTH, 3), dtype=np.uint8,
         )
         mock_imwrite.return_value = True
 

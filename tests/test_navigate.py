@@ -44,6 +44,66 @@ from config import (
 
 
 # ---------------------------------------------------------------------------
+# TestGameClick
+# ---------------------------------------------------------------------------
+
+class TestGameClick:
+    """Tests for game_click() offset helper."""
+
+    @patch("navigate.pyautogui.click")
+    @patch("navigate.find_game_window")
+    def test_offsets_by_window_position(self, mock_find, mock_click):
+        """Should add window left/top offset to game-relative coordinates."""
+        mock_find.return_value = {"left": 200, "top": 100, "width": 1920, "height": 1080}
+
+        from navigate import game_click
+        game_click(500, 300)
+
+        mock_click.assert_called_once_with(700, 400)
+
+    @patch("navigate.pyautogui.click")
+    @patch("navigate.find_game_window")
+    def test_zero_offset_passes_through(self, mock_find, mock_click):
+        """Should pass coordinates unchanged when window is at origin."""
+        mock_find.return_value = {"left": 0, "top": 0, "width": 1920, "height": 1080}
+
+        from navigate import game_click
+        game_click(960, 540)
+
+        mock_click.assert_called_once_with(960, 540)
+
+
+# ---------------------------------------------------------------------------
+# TestGameMoveTo
+# ---------------------------------------------------------------------------
+
+class TestGameMoveTo:
+    """Tests for game_move_to() offset helper."""
+
+    @patch("navigate.pyautogui.moveTo")
+    @patch("navigate.find_game_window")
+    def test_offsets_by_window_position(self, mock_find, mock_move):
+        """Should add window left/top offset to game-relative coordinates."""
+        mock_find.return_value = {"left": 200, "top": 100, "width": 1920, "height": 1080}
+
+        from navigate import game_move_to
+        game_move_to(960, 540)
+
+        mock_move.assert_called_once_with(1160, 640)
+
+    @patch("navigate.pyautogui.moveTo")
+    @patch("navigate.find_game_window")
+    def test_zero_offset_passes_through(self, mock_find, mock_move):
+        """Should pass coordinates unchanged when window is at origin."""
+        mock_find.return_value = {"left": 0, "top": 0, "width": 1920, "height": 1080}
+
+        from navigate import game_move_to
+        game_move_to(100, 200)
+
+        mock_move.assert_called_once_with(100, 200)
+
+
+# ---------------------------------------------------------------------------
 # TestWaitForScreen
 # ---------------------------------------------------------------------------
 
@@ -278,7 +338,7 @@ class TestWaitForStability:
 class TestNavigateHome:
     """Tests for navigate_home()."""
 
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_returns_when_already_on_world_screen(self, mock_wait, mock_click):
         """Should return without clicking back if World screen is found."""
@@ -291,7 +351,7 @@ class TestNavigateHome:
         )
         mock_click.assert_not_called()
 
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_clicks_back_once_on_single_timeout(self, mock_wait, mock_click):
         """Should click back and retry when first check times out."""
@@ -303,7 +363,7 @@ class TestNavigateHome:
         mock_click.assert_called_once_with(*CLICK_BACK)
         assert mock_wait.call_count == 2
 
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_retries_up_to_max_clicks(self, mock_wait, mock_click):
         """Should click back NAV_HOME_MAX_CLICKS times before final attempt."""
@@ -318,7 +378,7 @@ class TestNavigateHome:
         assert mock_click.call_count == NAV_HOME_MAX_CLICKS
         assert mock_wait.call_count == NAV_HOME_MAX_CLICKS + 1
 
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_raises_if_all_attempts_fail(self, mock_wait, mock_click):
         """Should propagate TimeoutError if world screen is never found."""
@@ -338,7 +398,7 @@ class TestNavigateHome:
 class TestNavigateToGuildMembers:
     """Tests for navigate_to_guild_members()."""
 
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_click_sequence_and_template_waits(self, mock_wait, mock_click):
         """Should click Guild → wait guild hall → click menu → wait member list."""
@@ -357,7 +417,7 @@ class TestNavigateToGuildMembers:
         ]
         assert mock_wait.call_args_list == expected_waits
 
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_propagates_timeout_from_guild_hall(self, mock_wait, mock_click):
         """Should propagate TimeoutError if Guild hall is not found."""
@@ -396,7 +456,7 @@ class TestNavigateToRanking:
         ],
     )
     @patch("navigate.wait_for_stability")
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_navigates_via_battle_modes_with_ranking_and_filter(
         self, mock_wait, mock_click, mock_stability,
@@ -428,7 +488,7 @@ class TestNavigateToRanking:
         ]
         assert mock_wait.call_args_list == expected_waits
 
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_propagates_timeout_from_battle_modes(self, mock_wait, mock_click):
         """Should propagate TimeoutError if Battle Modes menu is not found."""
@@ -447,7 +507,7 @@ class TestApplyGuildFilter:
     """Tests for apply_guild_filter()."""
 
     @patch("navigate.wait_for_stability")
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_two_clicks_with_stability_wait(
         self, mock_wait, mock_click, mock_stability
@@ -473,7 +533,7 @@ class TestApplyGuildFilter:
         )
 
     @patch("navigate.wait_for_stability")
-    @patch("navigate.pyautogui.click")
+    @patch("navigate.game_click")
     @patch("navigate.wait_for_screen")
     def test_propagates_timeout_after_filter(
         self, mock_wait, mock_click, mock_stability

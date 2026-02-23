@@ -61,8 +61,8 @@ COLUMN_ORDER: Final[list[str]] = [
 # Matches against tasklist (Windows) or pgrep (Linux).
 GAME_PROCESS_NAME: Final[str] = "AFK Journey"
 
-SCREEN_WIDTH: Final[int] = 1920
-SCREEN_HEIGHT: Final[int] = 1080
+GAME_WIDTH: Final[int] = 1920
+GAME_HEIGHT: Final[int] = 1080
 
 # ---------------------------------------------------------------------------
 # Template matching & waiting

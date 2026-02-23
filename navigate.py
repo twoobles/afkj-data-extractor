@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 import pyautogui
 
-from capture import capture_window
+from capture import capture_window, find_game_window
 from config import (
     CLICK_AFK_STAGES,
     CLICK_ARCANE_LABYRINTH,
@@ -56,6 +56,40 @@ from config import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def game_click(x: int, y: int) -> None:
+    """Click at game-relative coordinates, offset by the window position.
+
+    Calls ``find_game_window()`` to determine the current window offset,
+    then issues a ``pyautogui.click`` at the absolute screen position.
+
+    Args:
+        x: Horizontal position relative to the game client area.
+        y: Vertical position relative to the game client area.
+    """
+    geometry = find_game_window()
+    abs_x = x + geometry["left"]
+    abs_y = y + geometry["top"]
+    logger.debug("game_click(%d, %d) → absolute (%d, %d)", x, y, abs_x, abs_y)
+    pyautogui.click(abs_x, abs_y)
+
+
+def game_move_to(x: int, y: int) -> None:
+    """Move the mouse to game-relative coordinates, offset by the window position.
+
+    Calls ``find_game_window()`` to determine the current window offset,
+    then issues a ``pyautogui.moveTo`` at the absolute screen position.
+
+    Args:
+        x: Horizontal position relative to the game client area.
+        y: Vertical position relative to the game client area.
+    """
+    geometry = find_game_window()
+    abs_x = x + geometry["left"]
+    abs_y = y + geometry["top"]
+    logger.debug("game_move_to(%d, %d) → absolute (%d, %d)", x, y, abs_x, abs_y)
+    pyautogui.moveTo(abs_x, abs_y)
 
 
 def wait_for_screen(
@@ -155,7 +189,7 @@ def navigate_home() -> None:
                 "World screen not found (attempt %d/%d), clicking back",
                 attempt + 1, NAV_HOME_MAX_CLICKS,
             )
-            pyautogui.click(*CLICK_BACK)
+            game_click(*CLICK_BACK)
     # Final attempt with full default timeout
     wait_for_screen(template)
     logger.info("Arrived at World screen")
@@ -171,9 +205,9 @@ def navigate_to_guild_members() -> None:
         TimeoutError: If any intermediate screen template is not found.
     """
     logger.info("Navigating to Guild member list")
-    pyautogui.click(*CLICK_GUILD)
+    game_click(*CLICK_GUILD)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_GUILD_HALL))
-    pyautogui.click(*CLICK_GUILD_MENU)
+    game_click(*CLICK_GUILD_MENU)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_GUILD_MEMBER_LIST))
     logger.info("Arrived at Guild member list")
 
@@ -203,11 +237,11 @@ def _navigate_to_ranking(
         mode_name: Human-readable mode name for log messages.
     """
     logger.info("Navigating to %s ranking", mode_name)
-    pyautogui.click(*CLICK_BATTLE_MODES)
+    game_click(*CLICK_BATTLE_MODES)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_BATTLE_MODES))
-    pyautogui.click(*click_coords)
+    game_click(*click_coords)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_MODE_SCREEN))
-    pyautogui.click(*ranking_click_coords)
+    game_click(*ranking_click_coords)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
     apply_guild_filter(filter_1_coords, filter_2_coords)
     logger.info("Arrived at %s ranking with guild filter applied", mode_name)
@@ -304,9 +338,9 @@ def apply_guild_filter(
             applying the filter.
     """
     logger.debug("Applying guild-members-only filter")
-    pyautogui.click(*filter_1_coords)
+    game_click(*filter_1_coords)
     wait_for_stability()
-    pyautogui.click(*filter_2_coords)
+    game_click(*filter_2_coords)
     wait_for_screen(str(TEMPLATE_DIR / TEMPLATE_RANKING_SCREEN))
     logger.debug("Guild filter applied")
 
